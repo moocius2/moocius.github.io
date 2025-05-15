@@ -31,6 +31,8 @@
             position: absolute;
             top: 0;
             left: 0;
+             /* Ensure canvas interaction is enabled by default */
+             pointer-events: auto;
         }
         #overlay {
             position: absolute;
@@ -230,6 +232,7 @@
     </div>
 
     <script src="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/three.js/110/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r110/examples/js/controls/OrbitControls.js"></script>
     <script src="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/gsap/3.9.1/gsap.min.js"></script>
     <script>
         // Declare variables at the very top to prevent reference errors
@@ -238,9 +241,10 @@
         let mouse;
         let interactiveObjects = []; // Array to store clickable meshes
         let gamePaused = false;
-        let currentTargetHighlightTween = null; // Moved declaration to top
-        let hoveredObject = null; // Moved declaration to top
-
+        let currentTargetHighlightTween = null;
+        let hoveredObject = null;
+        let controls; // Declare OrbitControls variable
+        let cameraAnimationTween = null; // To keep track of the GSAP camera animation
 
         // Game State
         const gameData = {
@@ -318,6 +322,28 @@
              }
 
             console.log("Renderer initialized.");
+
+             // OrbitControls - Initialize controls AFTER camera and renderer
+             controls = new THREE.OrbitControls(camera, renderer.domElement);
+             controls.enableDamping = true; // Smooth camera movement
+             controls.dampingFactor = 0.25;
+             controls.screenSpacePanning = false; // Keep panning in object's x-y plane
+             controls.maxPolarAngle = Math.PI / 2; // Limit vertical rotation to prevent flipping
+             controls.target.set(0, 0, 0); // Set initial control target to origin
+
+             console.log("OrbitControls initialized.");
+
+             // Add event listener to controls to stop camera animation if user takes control
+             if (controls) {
+                 controls.addEventListener('start', () => {
+                      console.log("User started interacting with controls, stopping camera animation.");
+                      if (cameraAnimationTween) {
+                           cameraAnimationTween.kill();
+                           cameraAnimationTween = null; // Clear the tween variable
+                      }
+                 });
+             }
+
 
             // Lighting
             const ambientLight = new THREE.AmbientLight(0x404040); // Soft white light
@@ -415,6 +441,12 @@
                 return;
             }
             requestAnimationFrame(animate);
+
+            // Update controls in the animate loop
+             if (controls) {
+                 controls.update();
+             }
+
             renderer.render(scene, camera);
         }
 
@@ -425,8 +457,9 @@
         }
 
         function onCanvasClick(event) {
+             // Do not process clicks on 3D objects if game is paused or a modal is open
              if (gamePaused || infoModal.style.display !== 'none' || completionModal.style.display !== 'none') {
-                 return; // Don't interact if game is paused or modal is open
+                 return;
              }
 
             // Calculate mouse position in normalized device coordinates (-1 to +1)
@@ -466,6 +499,7 @@
         }
 
          function onCanvasMouseMove(event) {
+             // Disable hover effects if game is paused or a modal is open
               if (gamePaused || infoModal.style.display !== 'none' || completionModal.style.display !== 'none') {
                  if (hoveredObject) {
                      resetObjectHighlight(hoveredObject);
@@ -499,6 +533,11 @@
          }
 
         function highlightObject(object) {
+             // Don't highlight if it's already the pulsing target highlight
+             if (currentTargetHighlightTween && currentTargetHighlightTween.vars.target === object.material) {
+                 return;
+             }
+
              if (object.originalMaterial === undefined) {
                  object.originalMaterial = object.material;
              }
@@ -511,6 +550,10 @@
          }
 
          function resetObjectHighlight(object) {
+              // Don't reset if it's the currently pulsing target highlight
+             if (currentTargetHighlightTween && currentTargetHighlightTween.vars.target === object.material) {
+                 return;
+             }
              if (object && object.originalMaterial !== undefined) {
                  object.material = object.originalMaterial;
                  delete object.originalMaterial; // Clean up
@@ -525,8 +568,12 @@
                  infoModalTitle.innerText = task.info.title;
                  infoModalContent.innerText = task.info.content;
                  infoModal.style.display = 'block';
-                 // Prevent canvas interaction while modal is open
+                 // Prevent canvas interaction while modal is open - this also disables controls
                  renderer.domElement.style.pointerEvents = 'none';
+                 if(controls) controls.enabled = false; // Explicitly disable controls
+                 console.log("Info modal shown, controls disabled.");
+
+
                  // Optional: Play sound or animation for modal appearance
                   // new Audio('modal_open.mp3').play(); // Requires audio file
                   gsap.fromTo(infoModal, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.3 });
@@ -540,8 +587,11 @@
              // Optional: Play sound or animation for modal disappearance
               gsap.to(infoModal, { opacity: 0, scale: 0.8, duration: 0.3, onComplete: () => {
                  infoModal.style.display = 'none';
-                 // Re-enable canvas interaction
+                 // Re-enable canvas interaction and controls
                  renderer.domElement.style.pointerEvents = 'auto';
+                 if(controls) controls.enabled = true; // Explicitly re-enable controls
+                 console.log("Info modal hidden, controls enabled.");
+
                   // new Audio('modal_close.mp3').play(); // Requires audio file
               } });
         }
@@ -619,45 +669,75 @@
              }
         }
 
+         // Variable to store the current camera animation tween
+         // Declared at the top: let cameraAnimationTween = null;
+
          function animateCameraToTarget(targetPosition) {
              console.log("Animating camera to target position:", targetPosition.toArray());
-             // Simple camera movement towards the target object's XZ plane position
-              gsap.to(camera.position, {
-                  x: targetPosition.x,
-                  // Keep camera height, maybe slightly adjust
-                  y: camera.position.y, // Maintain current height
-                  z: targetPosition.z + 10, // Move to be in front of the target
-                  duration: 1.5,
-                  ease: "power2.inOut",
-                  onUpdate: () => {
-                     camera.lookAt(targetPosition.x, targetPosition.y, targetPosition.z);
-                  },
-                  onComplete: () => {
-                     console.log("Camera animation complete.");
-                  }
-              });
-               // Calculate the rotation needed to look at the target
-               const targetQuaternion = new THREE.Quaternion().setFromRotationMatrix(
-                   new THREE.Matrix4().lookAt(camera.position, targetPosition, camera.up)
-               );
 
-               gsap.to(camera.quaternion, {
-                    x: targetQuaternion.x,
-                    y: targetQuaternion.y,
-                    z: targetQuaternion.z,
-                    w: targetQuaternion.w,
-                    duration: 1.5,
-                    ease: "power2.inOut"
-               });
+             // Disable controls during animation
+             if (controls) {
+                 controls.enabled = false;
+                 console.log("Controls disabled during camera animation.");
+             }
+
+             // Kill any existing camera animation tween
+             if (cameraAnimationTween) {
+                 cameraAnimationTween.kill();
+                 cameraAnimationTween = null;
+                  console.log("Killed existing camera animation tween.");
+             }
+
+             // Create a timeline for sequential position and rotation animation if needed,
+             // but for simplicity, we can run them in parallel and manage the onComplete on one.
+
+             const positionTween = gsap.to(camera.position, {
+                 x: targetPosition.x,
+                 y: camera.position.y, // Maintain current height, or set a target height
+                 z: targetPosition.z + 10, // Move to be in front of the target
+                 duration: 1.5,
+                 ease: "power2.inOut",
+                 onUpdate: () => {
+                    camera.lookAt(targetPosition.x, targetPosition.y, targetPosition.z);
+                 }
+             });
+
+             const targetQuaternion = new THREE.Quaternion().setFromRotationMatrix(
+                 new THREE.Matrix4().lookAt(camera.position, targetPosition, camera.up)
+             );
+
+             const rotationTween = gsap.to(camera.quaternion, {
+                 x: targetQuaternion.x,
+                 y: targetQuaternion.y,
+                 z: targetQuaternion.z,
+                 w: targetQuaternion.w,
+                 duration: 1.5,
+                 ease: "power2.inOut",
+                 onComplete: () => {
+                    console.log("Camera animation complete.");
+                    // Re-enable controls after animation
+                    if (controls) {
+                        controls.enabled = true;
+                        // Force controls update to reflect final camera state
+                         controls.update();
+                         console.log("Controls re-enabled after camera animation.");
+                    }
+                    cameraAnimationTween = null; // Clear the tween variable
+                 }
+             });
+
+             // Store the rotation tween as the main one to track completion status
+             cameraAnimationTween = rotationTween;
          }
 
 
         function togglePauseMenu() {
             gamePaused = !gamePaused;
             pauseMenu.style.display = gamePaused ? 'block' : 'none';
-             // Disable canvas interaction when paused
+             // Disable/Enable canvas interaction and controls based on pause state
              renderer.domElement.style.pointerEvents = gamePaused ? 'none' : 'auto';
-            console.log("Game paused state:", gamePaused);
+             if(controls) controls.enabled = !gamePaused; // Disable controls when paused
+             console.log("Game paused state:", gamePaused, "Controls enabled:", controls.enabled);
 
              // Optional: Play sound
              // new Audio(gamePaused ? 'pause.mp3' : 'resume.mp3').play(); // Requires audio file
@@ -665,6 +745,14 @@
 
         function restartGame() {
             console.log("Restarting game...");
+             // Stop any current camera animation
+             if (cameraAnimationTween) {
+                 cameraAnimationTween.kill();
+                 cameraAnimationTween = null;
+                  console.log("Killed camera animation tween during restart.");
+             }
+
+
             // Reset game state
             gameData.currentTaskIndex = 0;
             gameData.score = 0;
@@ -693,27 +781,51 @@
             updateUI();
              console.log("restartGame logic reached point before setting task.");
             setTask(gameData.currentTaskIndex); // Set the first task
-             highlightCurrentTarget(); // Highlight the first target
-             // Reset camera position
-             console.log("Resetting camera to initial position...");
-             gsap.to(camera.position, { x: 0, y: 5, z: 15, duration: 1.5, ease: "power2.inOut" });
-             // Reset camera rotation to look towards origin
+
+             // Reset camera position and rotation with animation
+             console.log("Resetting camera to initial position and rotation...");
+             const initialPosition = new THREE.Vector3(0, 5, 15);
               const initialQuaternion = new THREE.Quaternion().setFromRotationMatrix(
-                  new THREE.Matrix4().lookAt(new THREE.Vector3(0, 5, 15), new THREE.Vector3(0, 0, 0), camera.up)
+                  new THREE.Matrix4().lookAt(initialPosition, new THREE.Vector3(0, 0, 0), camera.up)
               );
-             gsap.to(camera.quaternion, {
-                 x: initialQuaternion.x,
-                 y: initialQuaternion.y,
-                 z: initialQuaternion.z,
-                 w: initialQuaternion.w,
+
+             // Temporarily disable controls during restart animation
+             if(controls) controls.enabled = false;
+
+             gsap.to(camera.position, {
+                 x: initialPosition.x,
+                 y: initialPosition.y,
+                 z: initialPosition.z,
                  duration: 1.5,
-                 ease: "power2.inOut"
+                 ease: "power2.inOut",
+                 onComplete: () => { // Re-enable controls after position animation (or the longer one if using timeline)
+                     if (controls) {
+                         controls.enabled = true;
+                          controls.update(); // Ensure controls are synced after animation
+                          console.log("Controls re-enabled after restart position animation.");
+                     }
+                 }
              });
+              gsap.to(camera.quaternion, {
+                  x: initialQuaternion.x,
+                  y: initialQuaternion.y,
+                  z: initialQuaternion.z,
+                  w: initialQuaternion.w,
+                  duration: 1.5,
+                  ease: "power2.inOut"
+              });
+
+              // Reset controls target to origin after restart
+             if(controls) controls.target.set(0, 0, 0);
+
+
+             highlightCurrentTarget(); // Highlight the first target
 
 
             // Ensure game is not paused
             gamePaused = false;
-             renderer.domElement.style.pointerEvents = 'auto';
+             renderer.domElement.style.pointerEvents = 'auto'; // Ensure canvas is interactable
+
 
              saveGame(); // Save initial state
              console.log("Game restarted.");
@@ -723,12 +835,15 @@
              console.log("Ending game...");
              gamePaused = true; // Pause the game
              completionModal.style.display = 'block';
-              // Disable canvas interaction
+              // Disable canvas interaction and controls
              renderer.domElement.style.pointerEvents = 'none';
+             if(controls) controls.enabled = false;
+             console.log("Game ended, controls disabled.");
+
 
               // Stop highlighting the last target and reset its material
              const lastTaskIndex = gameData.tasks.length - 1;
-             if(lastTaskIndex >= 0) { // Ensure there was at least one task
+             if(lastTaskIndex >= 0 && gameData.tasks[lastTaskIndex]) { // Ensure there was at least one task
                  const lastTargetObjectName = gameData.tasks[lastTaskIndex].target;
                  if(lastTargetObjectName){
                       const lastTargetObject = scene.getObjectByName(lastTargetObjectName);
@@ -758,7 +873,8 @@
                     completedTasks: gameData.completedTasks,
                     knowledgeCollected: gameData.knowledgeCollected,
                     cameraPosition: camera.position.toArray(),
-                    cameraQuaternion: camera.quaternion.toArray() // Save quaternion instead of rotation
+                    cameraQuaternion: camera.quaternion.toArray(), // Save quaternion instead of rotation
+                    controlsTarget: controls ? controls.target.toArray() : new THREE.Vector3(0,0,0).toArray() // Save controls target
                 };
                 localStorage.setItem('learningGameProgress', JSON.stringify(gameProgress));
                 console.log("Game saved successfully.");
@@ -779,7 +895,7 @@
                     gameData.completedTasks = gameProgress.completedTasks || [];
                     gameData.knowledgeCollected = gameProgress.knowledgeCollected || {};
 
-                     // Restore camera position and rotation if available
+                     // Restore camera position and rotation
                      if (gameProgress.cameraPosition) {
                           camera.position.fromArray(gameProgress.cameraPosition);
                           console.log("Loaded camera position:", camera.position.toArray());
@@ -787,13 +903,21 @@
                       if (gameProgress.cameraQuaternion) {
                            camera.quaternion.fromArray(gameProgress.cameraQuaternion);
                            console.log("Loaded camera quaternion:", camera.quaternion.toArray());
-                           // No need for lookAt after restoring quaternion
-                      } else if (gameProgress.cameraRotation) {
-                           // Fallback for older saves that saved rotation
-                            camera.rotation.fromArray(gameProgress.cameraRotation);
-                            camera.lookAt(0,0,0); // This might not be perfect, but better than nothing
+                      } else if (gameProgress.cameraRotation) { // Fallback for older saves
+                           camera.rotation.fromArray(gameProgress.cameraRotation);
+                            // Note: Loading Euler rotations can be problematic, converting to quaternion is safer
                              console.log("Loaded camera rotation (fallback):", camera.rotation.toArray());
                       }
+
+                     // Restore controls target
+                     if(controls && gameProgress.controlsTarget){
+                         controls.target.fromArray(gameProgress.controlsTarget);
+                          console.log("Loaded controls target:", controls.target.toArray());
+                     } else if (controls) {
+                         // If no saved target, set to origin
+                         controls.target.set(0,0,0);
+                          console.log("No saved controls target, setting to origin.");
+                     }
 
 
                     console.log("Game data loaded successfully. State:", {
@@ -834,15 +958,13 @@
                   const previouslyTargetedObjectName = gameData.tasks[previousTaskIndex].target;
                   if(previouslyTargetedObjectName){
                        const previouslyTargetedObject = scene.getObjectByName(previouslyTargetedObjectName);
-                       if (previouslyTargetedObject && previouslyTargetedObject.originalMaterial !== undefined) {
-                            if (currentTargetHighlightTween) {
-                                currentTargetHighlightTween.kill();
-                                currentTargetHighlightTween = null; // Ensure tween variable is reset
-                            }
-                            previouslyTargetedObject.material = previouslyTargetedObject.originalMaterial;
-                            delete previouslyTargetedObject.originalMaterial;
-                            console.log("Reset highlight on previous target:", previouslyTargetedObjectName);
+                       // Kill tween *before* resetting material
+                       if (currentTargetHighlightTween && currentTargetHighlightTween.vars.target === (previouslyTargetedObject ? previouslyTargetedObject.material : null)) {
+                            currentTargetHighlightTween.kill();
+                            currentTargetHighlightTween = null; // Ensure tween variable is reset
+                            console.log("Killed existing highlight tween on previous target.");
                        }
+                       resetHighlightOnCompletion(previouslyTargetedObject); // Reset material
                   }
              } else {
                  // Handles the case when starting a new game (index 0), ensure previous highlight is off
@@ -903,8 +1025,9 @@
          // Ensure highlight is reset when a task is completed or game ends
          function resetHighlightOnCompletion(completedTaskObject) {
              console.log("Resetting highlight on object:", completedTaskObject ? completedTaskObject.name : 'null');
+              // Check if the object exists and has the originalMaterial stored
               if (completedTaskObject && completedTaskObject.originalMaterial !== undefined) {
-                  // Only reset if it has the originalMaterial stored (meaning it was highlighted)
+                  // Only reset if it has the originalMaterial stored (meaning it was highlighted by our system)
                   completedTaskObject.material = completedTaskObject.originalMaterial;
                   delete completedTaskObject.originalMaterial;
                   console.log("Material reset for", completedTaskObject.name);
