@@ -618,27 +618,29 @@
         }
 
         function handleTaskCompletion(task, object) {
-            console.log("Attempting to complete task:", task.id); // Log at the start of task completion
+            console.log("Attempting to complete task:", task.id, "Current task index BEFORE increment:", gameData.currentTaskIndex); // Log at the start of task completion
             if (!gameData.completedTasks.includes(task.id)) {
                 gameData.completedTasks.push(task.id);
-                gameData.score += task.score;
+                gameData.score += task.score; // This line executes (score updates)
                 gameData.knowledgeCollected[task.id] = task.info; // Store collected knowledge
-                console.log("Task completed:", task.id, "Score:", gameData.score);
+                console.log("Task completed:", task.id, "Score:", gameData.score); // This should log if score updates
 
                  // Optional: Play sound or animation for success
                  // new Audio('task_complete.mp3').play(); // Requires audio file
                  gsap.to(object.scale, { x: 1.2, y: 1.2, z: 1.2, duration: 0.2, yoyo: true, repeat: 1 });
 
                 // Reset highlight on the completed object
-                resetHighlightOnCompletion(object);
+                resetHighlightOnCompletion(object); // This should execute
 
                 // Move to the next task
-                gameData.currentTaskIndex++;
-                if (gameData.currentTaskIndex < gameData.tasks.length) {
-                    console.log("Moving to next task index:", gameData.currentTaskIndex);
-                    setTask(gameData.currentTaskIndex);
-                     highlightCurrentTarget();
-                     // Optional: Camera animation to new target
+                gameData.currentTaskIndex++; // This line executes if score updates
+                console.log("Task index incremented to:", gameData.currentTaskIndex); // Log the new index
+
+                if (gameData.currentTaskIndex < gameData.tasks.length) { // Condition for setting next task
+                    console.log("Condition met: Moving to next task. gameData.currentTaskIndex < gameData.tasks.length is true (", gameData.currentTaskIndex, "<", gameData.tasks.length, ")"); // *** Added Log Here ***
+                    setTask(gameData.currentTaskIndex); // <-- This should be called
+                    highlightCurrentTarget(); // <-- This should be called
+                    // Optional: Camera animation to new target
                      const nextTargetObject = scene.getObjectByName(gameData.tasks[gameData.currentTaskIndex].target);
                      if(nextTargetObject){
                           animateCameraToTarget(nextTargetObject.position);
@@ -646,12 +648,12 @@
 
 
                 } else {
-                    console.log("All tasks completed. Ending game.");
+                    console.log("Condition met: All tasks completed. gameData.currentTaskIndex < gameData.tasks.length is false (", gameData.currentTaskIndex, ">=", gameData.tasks.length, ")"); // *** Added Log Here ***
                     // Game Completed
                     endGame();
                 }
-                updateUI();
-                 saveGame(); // Save progress
+                updateUI(); // <-- This should be called after task completion logic
+                saveGame(); // <-- This should be called
             } else {
                  console.log("Task already completed:", task.id); // Debugging
                  // Optional: Provide feedback that task is already done
@@ -659,10 +661,12 @@
         }
 
         function setTask(index) {
-            console.log("Attempting to set task for index:", index); // Add log here
+            console.log("Attempting to set task for index:", index, "gameData.tasks.length:", gameData.tasks.length); // Add log here
             if (index < gameData.tasks.length && index >= 0) { // Add bounds check
-                taskDisplay.innerText = gameData.tasks[index].text;
-                 console.log("Current Task set to:", gameData.tasks[index].text, "Target:", gameData.tasks[index].target);
+                taskDisplay.innerText = gameData.tasks[index].text; // <-- This line updates the text
+                 console.log("Current Task text set to:", gameData.tasks[index].text); // <-- Should see this log
+                 console.log("Current Task target:", gameData.tasks[index].target);
+
             } else if (index >= gameData.tasks.length) {
                  taskDisplay.innerText = '游戏完成！';
                  console.log("Task index is out of bounds, game finished state.");
@@ -680,9 +684,12 @@
 
 
              if (gameData.currentTaskIndex < gameData.tasks.length) {
-                taskDisplay.innerText = gameData.tasks[gameData.currentTaskIndex].text;
+                // Ensure task display is updated correctly here too, although setTask is primary
+                // taskDisplay.innerText = gameData.tasks[gameData.currentTaskIndex].text; // Removed redundant update
+                 console.log("updateUI confirms current task index:", gameData.currentTaskIndex);
             } else {
                  taskDisplay.innerText = '游戏完成！';
+                 console.log("updateUI confirms game completion state.");
              }
         }
 
@@ -1062,13 +1069,25 @@
               // Check if the object exists and has the originalMaterial stored
               if (completedTaskObject && completedTaskObject.originalMaterial !== undefined) {
                   // Only reset if it has the originalMaterial stored (meaning it was highlighted by our system)
-                  completedTaskObject.material = completedTaskObject.originalMaterial;
+                  completedObject.material = completedObject.originalMaterial; // CORRECTED: Should use completedTaskObject
                   delete completedTaskObject.originalMaterial;
                   console.log("Material reset for", completedTaskObject.name);
               }
                // Note: This function does NOT kill currentTargetHighlightTween
                // Killing is handled in highlightCurrentTarget before setting a new one,
                // and in endGame when the game finishes.
+         }
+
+        // CORRECTED: Fix potential typo in resetHighlightOnCompletion
+        function resetHighlightOnCompletion(objectToReset) {
+             console.log("Attempting to reset highlight on object:", objectToReset ? objectToReset.name : 'null');
+              // Check if the object exists and has the originalMaterial stored
+              if (objectToReset && objectToReset.originalMaterial !== undefined) {
+                  // Only reset if it has the originalMaterial stored (meaning it was highlighted by our system)
+                  objectToReset.material = objectToReset.originalMaterial;
+                  delete objectToReset.originalMaterial;
+                  console.log("Material reset for", objectToReset.name);
+              }
          }
 
 
