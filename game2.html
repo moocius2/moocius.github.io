@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D几何形状探索 - 学习游戏</title>
+    <link href="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-100-M/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Noto+Sans+SC:wght@400;700&display=swap');
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f0f0f0;
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE10+ */
+            user-select: none; /* Standard */
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background-color: #e0e0e0; /* Fallback background */
+        }
+        canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Allows clicks to pass through to canvas by default */
+            z-index: 10;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        .ui-panel {
+            pointer-events: auto; /* Re-enable pointer events for UI elements */
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(5px);
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            color: #333;
+        }
+        #task-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+        }
+        #score-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+         #progress-bar-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 15px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            overflow: hidden;
+             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+             pointer-events: auto;
+        }
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #4CAF50;
+            border-radius: 8px;
+            transition: width 0.5s ease-in-out;
+        }
+        #info-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 500px;
+            display: none;
+            pointer-events: auto;
+            font-family: 'Noto Serif SC', serif;
+        }
+         #info-modal h3 {
+             font-family: 'Noto Serif SC', serif;
+             margin-top: 0;
+             margin-bottom: 0.5rem;
+             font-weight: 700;
+             font-size: 1.5rem;
+         }
+        #info-modal p {
+            font-family: 'Noto Serif SC', serif;
+            line-height: 1.6;
+        }
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            transition: color 0.2s;
+        }
+        .close-button:hover {
+            color: #333;
+        }
+
+         #pause-button {
+             position: absolute;
+             bottom: 20px;
+             left: 20px;
+             pointer-events: auto;
+             font-size: 2rem;
+             color: #666;
+             cursor: pointer;
+             transition: color 0.2s;
+         }
+         #pause-button:hover {
+             color: #333;
+         }
+
+        #pause-menu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 400px;
+            display: none;
+            text-align: center;
+            pointer-events: auto;
+        }
+        .game-button {
+             display: block;
+             width: 80%;
+             margin: 1rem auto;
+             padding: 0.8rem;
+             font-size: 1.2rem;
+             background-color: #4CAF50;
+             color: white;
+             border: none;
+             border-radius: 8px;
+             cursor: pointer;
+             transition: background-color 0.2s;
+         }
+         .game-button:hover {
+             background-color: #45a049;
+         }
+        .game-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #completion-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 500px;
+            display: none;
+            text-align: center;
+            pointer-events: auto;
+            font-family: 'Noto Serif SC', serif;
+        }
+         #completion-modal h3 {
+             font-family: 'Noto Serif SC', serif;
+             margin-top: 0;
+             margin-bottom: 1rem;
+             font-weight: 700;
+             font-size: 2rem;
+         }
+
+        /* Add a subtle highlight effect for interactive objects */
+        .interactive-object {
+             cursor: pointer; /* Indicate interactivity */
+        }
+
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        </div>
+
+    <div id="overlay">
+        <div id="task-display" class="ui-panel">
+            <p>任务：<span id="current-task">加载中...</span></p>
+        </div>
+        <div id="score-display" class="ui-panel">
+            <p>分数：<span id="current-score">0</span></p>
+        </div>
+        <div id="progress-bar-container">
+            <div id="progress-bar"></div>
+        </div>
+
+        <div id="info-modal" class="ui-panel">
+            <button class="close-button" id="close-info-modal"><i class="fas fa-times"></i></button>
+            <h3 id="info-modal-title">知识点</h3>
+            <p id="info-modal-content">...</p>
+            <button class="game-button mt-4" id="continue-button">继续</button>
+        </div>
+
+        <div id="pause-button"><i class="fas fa-pause-circle"></i></div>
+
+        <div id="pause-menu" class="ui-panel">
+            <h3>暂停</h3>
+            <button class="game-button" id="resume-button">继续游戏</button>
+            <button class="game-button" id="restart-button">重新开始</button>
+             </div>
+
+         <div id="completion-modal" class="ui-panel">
+             <h3 id="completion-title">恭喜完成！</h3>
+             <p id="completion-message">您已经成功探索了所有基本形状！</p>
+             <button class="game-button" id="play-again-button">再玩一次</button>
+         </div>
+
+    </div>
+
+    <script src="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/three.js/110/three.min.js"></script>
+    <script src="https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/gsap/3.9.1/gsap.min.js"></script>
+    <script>
+        // Declare variables at the very top to prevent reference errors
+        let scene, camera, renderer;
+        let raycaster;
+        let mouse;
+        let interactiveObjects = []; // Array to store clickable meshes
+        let gamePaused = false;
+        let currentTargetHighlightTween = null; // Moved declaration to top
+        let hoveredObject = null; // Moved declaration to top
+
+
+        // Game State
+        const gameData = {
+            tasks: [
+                { id: 'findCube', target: 'cubeMesh', text: '找到立方体', info: { title: '关于立方体', content: '立方体有6个面，12条边，8个顶点。所有面都是正方形，所有边长度相等。' }, score: 10 },
+                { id: 'findSphere', target: 'sphereMesh', text: '找到球体', info: { title: '关于球体', content: '球体是一个完全圆形的几何对象，它是完全对称的。球体没有边和顶点。' }, score: 15 },
+                { id: 'findCylinder', target: 'cylinderMesh', text: '找到圆柱体', info: { title: '关于圆柱体', content: '圆柱体由两个平行的圆形底面和连接它们的一个弯曲表面组成。它有2个边（圆周），没有顶点。' }, score: 12 },
+                { id: 'findPyramid', target: 'pyramidMesh', text: '找到棱锥', info: { title: '关于棱锥', content: '棱锥有一个多边形底面和三角形侧面，这些侧面在顶点（称为锥顶）处相遇。侧面的数量取决于底面的边数。' }, score: 18 }
+            ],
+            currentTaskIndex: 0,
+            score: 0,
+            completedTasks: [],
+            knowledgeCollected: {} // Store knowledge points collected
+        };
+
+        // UI Elements
+        const taskDisplay = document.getElementById('current-task');
+        const scoreDisplay = document.getElementById('current-score');
+        const progressBar = document.getElementById('progress-bar');
+        const infoModal = document.getElementById('info-modal');
+        const infoModalTitle = document.getElementById('info-modal-title');
+        const infoModalContent = document.getElementById('info-modal-content');
+        const closeInfoModalButton = document.getElementById('close-info-modal');
+        const continueButton = document.getElementById('continue-button');
+        const pauseButton = document.getElementById('pause-button');
+        const pauseMenu = document.getElementById('pause-menu');
+        const resumeButton = document.getElementById('resume-button');
+        const restartButton = document.getElementById('restart-button');
+        const completionModal = document.getElementById('completion-modal');
+        const playAgainButton = document.getElementById('play-again-button');
+
+        // Initialize the game
+        init();
+        animate();
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xcce0ff); // Light blue sky
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 5, 15);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('game-container').appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040); // Soft white light
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1).normalize();
+            scene.add(directionalLight);
+
+            // Geometry and Materials
+            const planeGeometry = new THREE.PlaneGeometry(50, 50);
+            const planeMaterial = new THREE.MeshLambertMaterial({ color: 0x90ee90 }); // Light green grass
+            const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.rotation.x = -Math.PI / 2; // Rotate to be horizontal
+            scene.add(plane);
+
+            const cubeGeometry = new THREE.BoxGeometry(2, 2, 2);
+            const cubeMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 }); // Red
+            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.set(-5, 1, 0);
+            cube.name = 'cubeMesh'; // Assign a name for identification
+            cube.userData = { type: 'shape', name: '立方体' };
+            interactiveObjects.push(cube);
+            scene.add(cube);
+
+            const sphereGeometry = new THREE.SphereGeometry(1.5, 32, 32);
+            const sphereMaterial = new THREE.MeshLambertMaterial({ color: 0x0000ff }); // Blue
+            const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            sphere.position.set(5, 1.5, -5);
+            sphere.name = 'sphereMesh';
+            sphere.userData = { type: 'shape', name: '球体' };
+            interactiveObjects.push(sphere);
+            scene.add(sphere);
+
+            const cylinderGeometry = new THREE.CylinderGeometry(1.5, 1.5, 3, 32);
+            const cylinderMaterial = new THREE.MeshLambertMaterial({ color: 0xffff00 }); // Yellow
+            const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+            cylinder.position.set(0, 1.5, 5);
+            cylinder.name = 'cylinderMesh';
+            cylinder.userData = { type: 'shape', name: '圆柱体' };
+            interactiveObjects.push(cylinder);
+            scene.add(cylinder);
+
+            const pyramidGeometry = new THREE.ConeGeometry(2, 3, 4); // Base radius, height, segments
+            const pyramidMaterial = new THREE.MeshLambertMaterial({ color: 0xffa500 }); // Orange
+            const pyramid = new THREE.Mesh(pyramidGeometry, pyramidMaterial);
+            pyramid.position.set(0, 1.5, -10);
+            pyramid.name = 'pyramidMesh';
+            pyramid.userData = { type: 'shape', name: '棱锥' };
+            interactiveObjects.push(pyramid);
+            scene.add(pyramid);
+
+
+            // Raycaster for interactions
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize, false);
+            renderer.domElement.addEventListener('click', onCanvasClick, false);
+             // Add hover effect listener (optional, for visual feedback)
+             renderer.domElement.addEventListener('mousemove', onCanvasMouseMove, false);
+
+
+            // UI Event Listeners
+            closeInfoModalButton.addEventListener('click', hideInfoModal);
+            continueButton.addEventListener('click', handleContinue);
+            pauseButton.addEventListener('click', togglePauseMenu);
+            resumeButton.addEventListener('click', togglePauseMenu); // Resume button also just closes the menu
+            restartButton.addEventListener('click', restartGame);
+             playAgainButton.addEventListener('click', restartGame);
+
+
+            // Initial Game State Setup
+            updateUI();
+            loadGame(); // Attempt to load previous progress
+            // setTask is called within loadGame or restartGame
+
+            // highlightCurrentTarget is called within loadGame or restartGame
+        }
+
+        function animate() {
+            if (gamePaused) {
+                requestAnimationFrame(animate);
+                return;
+            }
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onCanvasClick(event) {
+             if (gamePaused || infoModal.style.display !== 'none' || completionModal.style.display !== 'none') {
+                 return; // Don't interact if game is paused or modal is open
+             }
+
+            // Calculate mouse position in normalized device coordinates (-1 to +1)
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            // Update the picking ray with the camera and mouse position
+            raycaster.setFromCamera(mouse, camera);
+
+            // Calculate objects intersecting the picking ray
+            const intersects = raycaster.intersectObjects(interactiveObjects, true); // Check interactiveObjects array
+
+            if (intersects.length > 0) {
+                const clickedObject = intersects[0].object;
+                console.log('Clicked on:', clickedObject.name); // Debugging
+
+                // Check if the clicked object is the target for the current task
+                const currentTask = gameData.tasks[gameData.currentTaskIndex];
+                if (clickedObject.name === currentTask.target) {
+                    console.log('Correct object clicked!'); // Debugging
+                    handleTaskCompletion(currentTask, clickedObject);
+                } else {
+                    console.log('Wrong object clicked.'); // Debugging
+                     // Optional: Provide visual/audio feedback for wrong click
+                     // new Audio('wrong_answer.mp3').play(); // Requires audio file
+                     gsap.to(clickedObject.scale, { x: 1.1, y: 1.1, z: 1.1, duration: 0.1, yoyo: true, repeat: 1 });
+                }
+                 // Regardless of correct/wrong, show info if it's an interactive object that has associated info
+                 const clickedTask = gameData.tasks.find(t => t.target === clickedObject.name);
+                 if(clickedTask && clickedTask.info){
+                     showInfoModal(clickedObject);
+                 }
+            }
+        }
+
+         function onCanvasMouseMove(event) {
+              if (gamePaused || infoModal.style.display !== 'none' || completionModal.style.display !== 'none') {
+                 if (hoveredObject) {
+                     resetObjectHighlight(hoveredObject);
+                     hoveredObject = null;
+                 }
+                 return;
+             }
+
+             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+             raycaster.setFromCamera(mouse, camera);
+
+             const intersects = raycaster.intersectObjects(interactiveObjects, true);
+
+             if (intersects.length > 0) {
+                 const object = intersects[0].object;
+                 if (hoveredObject !== object) {
+                     if (hoveredObject) {
+                         resetObjectHighlight(hoveredObject);
+                     }
+                      highlightObject(object);
+                     hoveredObject = object;
+                 }
+             } else {
+                 if (hoveredObject) {
+                     resetObjectHighlight(hoveredObject);
+                     hoveredObject = null;
+                 }
+             }
+         }
+
+        function highlightObject(object) {
+             if (object.originalMaterial === undefined) {
+                 object.originalMaterial = object.material;
+             }
+             // Use a subtle emissive color or outline effect
+              const highlightMaterial = object.originalMaterial.clone();
+              highlightMaterial.emissive = new THREE.Color(0x00ff00); // Green glow
+              highlightMaterial.emissiveIntensity = 0.2;
+             object.material = highlightMaterial;
+             document.body.style.cursor = 'pointer'; // Change cursor
+         }
+
+         function resetObjectHighlight(object) {
+             if (object && object.originalMaterial !== undefined) {
+                 object.material = object.originalMaterial;
+                 delete object.originalMaterial; // Clean up
+             }
+             document.body.style.cursor = 'default'; // Reset cursor
+         }
+
+
+        function showInfoModal(object) {
+             const task = gameData.tasks.find(t => t.target === object.name);
+             if (task && task.info) {
+                 infoModalTitle.innerText = task.info.title;
+                 infoModalContent.innerText = task.info.content;
+                 infoModal.style.display = 'block';
+                 // Prevent canvas interaction while modal is open
+                 renderer.domElement.style.pointerEvents = 'none';
+                 // Optional: Play sound or animation for modal appearance
+                  // new Audio('modal_open.mp3').play(); // Requires audio file
+                  gsap.fromTo(infoModal, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.3 });
+             } else {
+                  // If clicked object is interactive but has no info defined, do nothing
+                   console.log("No specific info defined for this object.");
+             }
+        }
+
+        function hideInfoModal() {
+             // Optional: Play sound or animation for modal disappearance
+              gsap.to(infoModal, { opacity: 0, scale: 0.8, duration: 0.3, onComplete: () => {
+                 infoModal.style.display = 'none';
+                 // Re-enable canvas interaction
+                 renderer.domElement.style.pointerEvents = 'auto';
+                  // new Audio('modal_close.mp3').play(); // Requires audio file
+              } });
+        }
+
+        function handleContinue() {
+             // Logic to continue after reading info - currently handled by hideInfoModal
+             hideInfoModal();
+             // In a more complex game, 'continue' might trigger the next step or quiz
+        }
+
+        function handleTaskCompletion(task, object) {
+            if (!gameData.completedTasks.includes(task.id)) {
+                gameData.completedTasks.push(task.id);
+                gameData.score += task.score;
+                gameData.knowledgeCollected[task.id] = task.info; // Store collected knowledge
+
+                 // Optional: Play sound or animation for success
+                 // new Audio('task_complete.mp3').play(); // Requires audio file
+                 gsap.to(object.scale, { x: 1.2, y: 1.2, z: 1.2, duration: 0.2, yoyo: true, repeat: 1 });
+
+                // Reset highlight on the completed object
+                resetHighlightOnCompletion(object);
+
+                // Move to the next task
+                gameData.currentTaskIndex++;
+                if (gameData.currentTaskIndex < gameData.tasks.length) {
+                    setTask(gameData.currentTaskIndex);
+                     highlightCurrentTarget();
+                     // Optional: Camera animation to new target
+                     const nextTargetObject = scene.getObjectByName(gameData.tasks[gameData.currentTaskIndex].target);
+                     if(nextTargetObject){
+                          animateCameraToTarget(nextTargetObject.position);
+                     }
+
+
+                } else {
+                    // Game Completed
+                    endGame();
+                }
+                updateUI();
+                 saveGame(); // Save progress
+            } else {
+                 console.log("Task already completed."); // Debugging
+                 // Optional: Provide feedback that task is already done
+            }
+        }
+
+        function setTask(index) {
+            if (index < gameData.tasks.length) {
+                taskDisplay.innerText = gameData.tasks[index].text;
+                 console.log("Current Task:", gameData.tasks[index].text); // Debugging
+            }
+        }
+
+        function updateUI() {
+            scoreDisplay.innerText = gameData.score;
+            const progress = (gameData.completedTasks.length / gameData.tasks.length) * 100;
+            progressBar.style.width = `${progress}%`;
+
+             if (gameData.currentTaskIndex < gameData.tasks.length) {
+                taskDisplay.innerText = gameData.tasks[gameData.currentTaskIndex].text;
+            } else {
+                 taskDisplay.innerText = '游戏完成！';
+             }
+        }
+
+         function animateCameraToTarget(targetPosition) {
+             // Simple camera movement towards the target object's XZ plane position
+              gsap.to(camera.position, {
+                  x: targetPosition.x,
+                  // Keep camera height, maybe slightly adjust
+                  y: camera.position.y,
+                  z: targetPosition.z + 10, // Move to be in front of the target
+                  duration: 1.5,
+                  ease: "power2.inOut",
+                  onUpdate: () => {
+                     camera.lookAt(targetPosition.x, targetPosition.y, targetPosition.z);
+                  }
+              });
+               // Calculate the rotation needed to look at the target
+               const targetQuaternion = new THREE.Quaternion().setFromRotationMatrix(
+                   new THREE.Matrix4().lookAt(camera.position, targetPosition, camera.up)
+               );
+
+               gsap.to(camera.quaternion, {
+                    x: targetQuaternion.x,
+                    y: targetQuaternion.y,
+                    z: targetQuaternion.z,
+                    w: targetQuaternion.w,
+                    duration: 1.5,
+                    ease: "power2.inOut"
+               });
+         }
+
+
+        function togglePauseMenu() {
+            gamePaused = !gamePaused;
+            pauseMenu.style.display = gamePaused ? 'block' : 'none';
+             // Disable canvas interaction when paused
+             renderer.domElement.style.pointerEvents = gamePaused ? 'none' : 'auto';
+
+             // Optional: Play sound
+             // new Audio(gamePaused ? 'pause.mp3' : 'resume.mp3').play(); // Requires audio file
+        }
+
+        function restartGame() {
+            // Reset game state
+            gameData.currentTaskIndex = 0;
+            gameData.score = 0;
+            gameData.completedTasks = [];
+            gameData.knowledgeCollected = {};
+
+            // Hide modals
+            infoModal.style.display = 'none';
+            pauseMenu.style.display = 'none';
+             completionModal.style.display = 'none';
+
+            // Reset Three.js scene elements if needed (not strictly necessary for simple shape positions)
+             // If objects were moved or animated, reset their transforms here.
+             interactiveObjects.forEach(obj => {
+                  if (obj.originalMaterial !== undefined) {
+                      obj.material = obj.originalMaterial;
+                      delete obj.originalMaterial;
+                  }
+                  // Reset any scale changes from feedback
+                  gsap.killTweensOf(obj.scale);
+                  obj.scale.set(1, 1, 1);
+             });
+
+            // Update UI and set first task
+            updateUI();
+            setTask(gameData.currentTaskIndex);
+             highlightCurrentTarget();
+             // Reset camera position
+             gsap.to(camera.position, { x: 0, y: 5, z: 15, duration: 1.5, ease: "power2.inOut" });
+             // Reset camera rotation to look towards origin
+              const initialQuaternion = new THREE.Quaternion().setFromRotationMatrix(
+                  new THREE.Matrix4().lookAt(new THREE.Vector3(0, 5, 15), new THREE.Vector3(0, 0, 0), camera.up)
+              );
+             gsap.to(camera.quaternion, {
+                 x: initialQuaternion.x,
+                 y: initialQuaternion.y,
+                 z: initialQuaternion.z,
+                 w: initialQuaternion.w,
+                 duration: 1.5,
+                 ease: "power2.inOut"
+             });
+
+
+            // Ensure game is not paused
+            gamePaused = false;
+             renderer.domElement.style.pointerEvents = 'auto';
+
+             saveGame(); // Save initial state
+        }
+
+        function endGame() {
+             gamePaused = true; // Pause the game
+             completionModal.style.display = 'block';
+              // Disable canvas interaction
+             renderer.domElement.style.pointerEvents = 'none';
+
+              // Stop highlighting the last target
+             const lastTargetObjectName = gameData.tasks[gameData.tasks.length - 1].target;
+             if(lastTargetObjectName){
+                  const lastTargetObject = scene.getObjectByName(lastTargetObjectName);
+                  resetHighlightOnCompletion(lastTargetObject); // Explicitly reset highlight
+             }
+             if (currentTargetHighlightTween) {
+                 currentTargetHighlightTween.kill();
+                 currentTargetHighlightTween = null;
+             }
+
+
+             // Optional: Play celebratory sound/animation
+              // new Audio('game_complete.mp3').play(); // Requires audio file
+              gsap.fromTo(completionModal, { opacity: 0, scale: 0.8 }, { opacity: 1, scale: 1, duration: 0.5 });
+        }
+
+        function saveGame() {
+            try {
+                const gameProgress = {
+                    currentTaskIndex: gameData.currentTaskIndex,
+                    score: gameData.score,
+                    completedTasks: gameData.completedTasks,
+                    knowledgeCollected: gameData.knowledgeCollected,
+                    cameraPosition: camera.position.toArray(),
+                    cameraQuaternion: camera.quaternion.toArray() // Save quaternion instead of rotation
+                };
+                localStorage.setItem('learningGameProgress', JSON.stringify(gameProgress));
+                console.log("Game saved."); // Debugging
+            } catch (e) {
+                console.error("Could not save game:", e);
+            }
+        }
+
+        function loadGame() {
+            try {
+                const savedProgress = localStorage.getItem('learningGameProgress');
+                if (savedProgress) {
+                    const gameProgress = JSON.parse(savedProgress);
+                    gameData.currentTaskIndex = gameProgress.currentTaskIndex || 0;
+                    gameData.score = gameProgress.score || 0;
+                    gameData.completedTasks = gameProgress.completedTasks || [];
+                    gameData.knowledgeCollected = gameProgress.knowledgeCollected || {};
+
+                     // Restore camera position and rotation if available
+                     if (gameProgress.cameraPosition) {
+                          camera.position.fromArray(gameProgress.cameraPosition);
+                     }
+                      if (gameProgress.cameraQuaternion) {
+                           camera.quaternion.fromArray(gameProgress.cameraQuaternion);
+                           // No need for lookAt after restoring quaternion
+                      } else if (gameProgress.cameraRotation) {
+                           // Fallback for older saves
+                            camera.rotation.fromArray(gameProgress.cameraRotation);
+                             camera.lookAt(0,0,0); // This might not be perfect, but better than nothing
+                      }
+
+
+                    console.log("Game loaded."); // Debugging
+                     // If game was completed on last save, show completion modal
+                     if (gameData.currentTaskIndex >= gameData.tasks.length) {
+                         endGame();
+                     } else {
+                          setTask(gameData.currentTaskIndex);
+                           updateUI();
+                            highlightCurrentTarget(); // Highlight the current task's target after loading
+                     }
+
+                } else {
+                    console.log("No saved game found."); // Debugging
+                    // Start a new game if no save exists
+                     restartGame(); // This also sets the first task and updates UI
+                }
+            } catch (e) {
+                console.error("Could not load game:", e);
+                 // Start a new game if loading fails
+                 restartGame();
+            }
+        }
+
+         // Helper to highlight the current task's target object visually
+         function highlightCurrentTarget() {
+             // Stop any existing highlight animation and reset material on the previous target
+             const previouslyTargetedObjectName = gameData.tasks[gameData.currentTaskIndex > 0 ? gameData.currentTaskIndex - 1 : 0].target;
+             if(previouslyTargetedObjectName){
+                  const previouslyTargetedObject = scene.getObjectByName(previouslyTargetedObjectName);
+                  if (previouslyTargetedObject && previouslyTargetedObject.originalMaterial !== undefined) {
+                       if (currentTargetHighlightTween) {
+                           currentTargetHighlightTween.kill();
+                       }
+                       previouslyTargetedObject.material = previouslyTargetedObject.originalMaterial;
+                       delete previouslyTargetedObject.originalMaterial;
+                  }
+             } else {
+                 // Handles the case when starting a new game (index 0), ensure previous highlight is off
+                  if (currentTargetHighlightTween) {
+                      currentTargetHighlightTween.kill();
+                      currentTargetHighlightTween = null;
+                  }
+             }
+
+
+             if (gameData.currentTaskIndex < gameData.tasks.length) {
+                 const targetObjectName = gameData.tasks[gameData.currentTaskIndex].target;
+                 const targetObject = scene.getObjectByName(targetObjectName);
+                 if (targetObject) {
+                      if (targetObject.originalMaterial === undefined) {
+                          targetObject.originalMaterial = targetObject.material;
+                      }
+                       const highlightMaterial = targetObject.originalMaterial.clone();
+                       highlightMaterial.emissive = new THREE.Color(0xffff00); // Yellow pulse
+                       highlightMaterial.emissiveIntensity = 0.3; // Start with some intensity
+                      targetObject.material = highlightMaterial;
+
+
+                     // Pulsing animation
+                      currentTargetHighlightTween = gsap.to(targetObject.material, {
+                          emissiveIntensity: 0.8,
+                          duration: 1,
+                          repeat: -1, // Infinite repeat
+                          yoyo: true, // Go back and forth
+                          ease: "power1.inOut"
+                      });
+                 }
+             } else {
+                  // Game is complete, ensure no object is highlighted
+                   if (currentTargetHighlightTween) {
+                       currentTargetHighlightTween.kill();
+                       currentTargetHighlightTween = null;
+                   }
+                   // Reset material of the last targeted object if needed
+                    if (gameData.tasks.length > 0) {
+                         const lastTargetObjectName = gameData.tasks[gameData.tasks.length - 1].target;
+                         const lastTargetObject = scene.getObjectByName(lastTargetObjectName);
+                         resetHighlightOnCompletion(lastTargetObject);
+                    }
+             }
+         }
+
+         // Ensure highlight is reset when a task is completed
+         function resetHighlightOnCompletion(completedTaskObject) {
+              if (completedTaskObject && completedTaskObject.originalMaterial !== undefined) {
+                  completedTaskObject.material = completedTaskObject.originalMaterial;
+                  delete completedTaskObject.originalMaterial;
+              }
+               // Note: This function doesn't kill currentTargetHighlightTween
+               // Killing is handled in highlightCurrentTarget before setting a new one,
+               // and in endGame when the game finishes.
+         }
+
+
+        // Add basic sound feedback (requires actual sound files)
+        // function playSound(sound) {
+        //     const audio = new Audio(sound);
+        //     audio.play().catch(e => console.error("Audio playback failed:", e));
+        // }
+
+
+    </script>
+</body>
+</html>
