@@ -433,6 +433,7 @@
             console.log("Initial UI updated.");
             loadGame(); // Attempt to load previous progress
              console.log("Attempting to load game...");
+             console.log("GameData score after init/loadGame call:", gameData.score); // Log score after load attempt
         }
 
         function animate() {
@@ -620,6 +621,7 @@
         function handleTaskCompletion(task, object) {
             console.log("Attempting to complete task:", task.id, "Current task index BEFORE increment:", gameData.currentTaskIndex); // Log at the start of task completion
             if (!gameData.completedTasks.includes(task.id)) {
+                console.log("Task", task.id, "not yet completed.");
                 gameData.completedTasks.push(task.id);
                 gameData.score += task.score; // This line executes (score updates)
                 gameData.knowledgeCollected[task.id] = task.info; // Store collected knowledge
@@ -644,6 +646,8 @@
                      const nextTargetObject = scene.getObjectByName(gameData.tasks[gameData.currentTaskIndex].target);
                      if(nextTargetObject){
                           animateCameraToTarget(nextTargetObject.position);
+                     } else {
+                         console.error("handleTaskCompletion Error: Next target object not found in scene:", gameData.tasks[gameData.currentTaskIndex].target);
                      }
 
 
@@ -663,24 +667,32 @@
         function setTask(index) {
             console.log("Attempting to set task for index:", index, "gameData.tasks.length:", gameData.tasks.length); // Add log here
             if (index < gameData.tasks.length && index >= 0) { // Add bounds check
-                taskDisplay.innerText = gameData.tasks[index].text; // <-- This line updates the text
-                 console.log("Current Task text set to:", gameData.tasks[index].text); // <-- Should see this log
-                 console.log("Current Task target:", gameData.tasks[index].target);
+                 if(taskDisplay) { // Ensure taskDisplay element exists
+                     taskDisplay.innerText = gameData.tasks[index].text; // <-- This line updates the text
+                      console.log("Current Task text set to:", gameData.tasks[index].text); // <-- Should see this log
+                      console.log("Current Task target:", gameData.tasks[index].target);
+                 } else {
+                     console.error("setTask Error: taskDisplay element not found.");
+                 }
 
             } else if (index >= gameData.tasks.length) {
-                 taskDisplay.innerText = '游戏完成！';
+                 if(taskDisplay) taskDisplay.innerText = '游戏完成！';
                  console.log("Task index is out of bounds, game finished state.");
             } else {
-                 taskDisplay.innerText = '加载失败或无任务'; // Indicate a potential issue
+                 if(taskDisplay) taskDisplay.innerText = '加载失败或无任务'; // Indicate a potential issue
                  console.error("Error: Invalid task index received by setTask:", index, ". gameData.tasks.length:", gameData.tasks.length);
             }
         }
 
         function updateUI() {
-            scoreDisplay.innerText = gameData.score;
-            const progress = (gameData.completedTasks.length / gameData.tasks.length) * 100;
-            progressBar.style.width = `${progress}%`;
-            console.log("UI updated. Score:", gameData.score, "Progress:", progress);
+            if(scoreDisplay) scoreDisplay.innerText = gameData.score;
+            if(progressBar && gameData.tasks.length > 0) {
+                const progress = (gameData.completedTasks.length / gameData.tasks.length) * 100;
+                 progressBar.style.width = `${progress}%`;
+                 console.log("UI updated. Score:", gameData.score, "Progress:", progress);
+            } else {
+                 console.log("UI updated. Score:", gameData.score, "Progress bar not updated (tasks.length is 0 or progressBar not found).");
+            }
 
 
              if (gameData.currentTaskIndex < gameData.tasks.length) {
@@ -688,7 +700,7 @@
                 // taskDisplay.innerText = gameData.tasks[gameData.currentTaskIndex].text; // Removed redundant update
                  console.log("updateUI confirms current task index:", gameData.currentTaskIndex);
             } else {
-                 taskDisplay.innerText = '游戏完成！';
+                 if(taskDisplay) taskDisplay.innerText = '游戏完成！';
                  console.log("updateUI confirms game completion state.");
              }
         }
@@ -791,9 +803,16 @@
 
             // Reset game state
             gameData.currentTaskIndex = 0;
-            gameData.score = 0;
+            gameData.score = 0; // Ensure score is reset to 0
             gameData.completedTasks = [];
             gameData.knowledgeCollected = {};
+
+            console.log("Game state reset:", {
+                currentTaskIndex: gameData.currentTaskIndex,
+                score: gameData.score,
+                completedTasks: gameData.completedTasks.length
+            });
+
 
             // Hide modals
             infoModal.style.display = 'none';
@@ -814,7 +833,7 @@
 
 
             // Update UI and set first task
-            updateUI();
+            updateUI(); // This will show score 0 and update progress
              console.log("restartGame logic reached point before setting task.");
             setTask(gameData.currentTaskIndex); // Set the first task
 
@@ -868,6 +887,7 @@
 
 
              saveGame(); // Save initial state
+             console.log("Game restarted. Score is:", gameData.score); // Log score after restart
              console.log("Game restarted.");
         }
 
@@ -917,7 +937,7 @@
                     controlsTarget: controls ? controls.target.toArray() : new THREE.Vector3(0,0,0).toArray() // Save controls target
                 };
                 localStorage.setItem('learningGameProgress', JSON.stringify(gameProgress));
-                console.log("Game saved successfully.");
+                console.log("Game saved successfully. Current score:", gameData.score); // Log saved score
             } catch (e) {
                 console.error("Could not save game:", e);
             }
@@ -931,7 +951,7 @@
                     console.log("Found saved game data.");
                     const gameProgress = JSON.parse(savedProgress);
                     gameData.currentTaskIndex = gameProgress.currentTaskIndex || 0;
-                    gameData.score = gameProgress.score || 0;
+                    gameData.score = gameProgress.score || 0; // Load saved score
                     gameData.completedTasks = gameProgress.completedTasks || [];
                     gameData.knowledgeCollected = gameProgress.knowledgeCollected || {};
 
@@ -963,7 +983,7 @@
 
                     console.log("Game data loaded successfully. State:", {
                         currentTaskIndex: gameData.currentTaskIndex,
-                        score: gameData.score,
+                        score: gameData.score, // Log loaded score
                         completedTasks: gameData.completedTasks.length
                     });
                      // If game was completed on last save, show completion modal
@@ -973,20 +993,21 @@
                      } else {
                           console.log("loadGame logic reached point before setting task/updating UI.");
                           setTask(gameData.currentTaskIndex); // Set the task based on loaded index
-                           updateUI();
+                           updateUI(); // updateUI also shows the loaded score
                             highlightCurrentTarget(); // Highlight the current task's target after loading
                      }
 
                 } else {
                     console.log("No saved game found.");
                     // Start a new game if no save exists
-                     restartGame(); // This also calls setTask
+                     restartGame(); // This also calls setTask and ensures score=0
                 }
             } catch (e) {
                 console.error("Could not load game:", e);
                  // Start a new game if loading fails
-                 restartGame(); // This also calls setTask
+                 restartGame(); // This also calls setTask and ensures score=0
             }
+            console.log("loadGame function finished.");
         }
 
          // Helper to highlight the current task's target object visually
@@ -1064,22 +1085,7 @@
          }
 
          // Ensure highlight is reset when a task is completed or game ends
-         function resetHighlightOnCompletion(completedTaskObject) {
-             console.log("Resetting highlight on object:", completedTaskObject ? completedTaskObject.name : 'null');
-              // Check if the object exists and has the originalMaterial stored
-              if (completedTaskObject && completedTaskObject.originalMaterial !== undefined) {
-                  // Only reset if it has the originalMaterial stored (meaning it was highlighted by our system)
-                  completedObject.material = completedObject.originalMaterial; // CORRECTED: Should use completedTaskObject
-                  delete completedTaskObject.originalMaterial;
-                  console.log("Material reset for", completedTaskObject.name);
-              }
-               // Note: This function does NOT kill currentTargetHighlightTween
-               // Killing is handled in highlightCurrentTarget before setting a new one,
-               // and in endGame when the game finishes.
-         }
-
-        // CORRECTED: Fix potential typo in resetHighlightOnCompletion
-        function resetHighlightOnCompletion(objectToReset) {
+         function resetHighlightOnCompletion(objectToReset) {
              console.log("Attempting to reset highlight on object:", objectToReset ? objectToReset.name : 'null');
               // Check if the object exists and has the originalMaterial stored
               if (objectToReset && objectToReset.originalMaterial !== undefined) {
