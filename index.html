@@ -1,64 +1,872 @@
-<html>
+<!DOCTYPE html>
+<html lang="zh-CN">
 
 <head>
-	<meta charset="utf-8">
-	<title>Moocius数信之路</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Moocius 数信之路 | 数学 · 算法 · 可视化</title>
+
+  <meta
+    name="description"
+    content="Moocius 数信之路：探索数学、算法与可视化，用直观方式理解数学思想与计算机算法。"
+  >
+
+  <style>
+    :root {
+      --bg: #080b12;
+      --bg-soft: #0d111b;
+      --card: #101622;
+      --card-hover: #151d2b;
+
+      --text: #f5f7fb;
+      --muted: #929db1;
+
+      --cyan: #67e8f9;
+      --blue: #818cf8;
+
+      --border: rgba(255,255,255,.08);
+
+      --max-width: 1180px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family:
+        Inter,
+        "PingFang SC",
+        "Microsoft YaHei",
+        Arial,
+        sans-serif;
+
+      background:
+        radial-gradient(
+          circle at 50% -20%,
+          rgba(103,232,249,.14),
+          transparent 35%
+        ),
+        var(--bg);
+
+      color: var(--text);
+
+      line-height: 1.7;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      max-width: var(--max-width);
+      margin: auto;
+      padding: 0 28px;
+    }
+
+    /* --------------------
+       NAV
+    --------------------- */
+
+    nav {
+      height: 72px;
+      display: flex;
+      align-items: center;
+
+      position: sticky;
+      top: 0;
+      z-index: 100;
+
+      background: rgba(8,11,18,.72);
+      backdrop-filter: blur(18px);
+
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-inner {
+      width: 100%;
+
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      font-size: 20px;
+      font-weight: 750;
+      letter-spacing: -.5px;
+    }
+
+    .logo span {
+      color: var(--cyan);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .nav-links a {
+      transition: .2s;
+    }
+
+    .nav-links a:hover {
+      color: white;
+    }
+
+    /* --------------------
+       HERO
+    --------------------- */
+
+    .hero {
+      min-height: 700px;
+
+      display: flex;
+      align-items: center;
+
+      text-align: center;
+    }
+
+    .hero-inner {
+      width: 100%;
+    }
+
+    .eyebrow {
+      font-size: 13px;
+
+      color: var(--cyan);
+
+      letter-spacing: 3px;
+      text-transform: uppercase;
+
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      font-size: clamp(52px, 8vw, 96px);
+
+      line-height: 1.02;
+      letter-spacing: -4px;
+
+      margin-bottom: 30px;
+    }
+
+    .gradient-text {
+      background:
+        linear-gradient(
+          90deg,
+          #fff,
+          #92f1ff,
+          #9b91ff
+        );
+
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .hero-description {
+      max-width: 680px;
+
+      margin:
+        0 auto
+        42px;
+
+      color: var(--muted);
+
+      font-size: 20px;
+    }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+
+      gap: 16px;
+
+      flex-wrap: wrap;
+    }
+
+    .button {
+      padding: 13px 24px;
+
+      border-radius: 10px;
+
+      font-size: 15px;
+      font-weight: 600;
+
+      transition: .2s;
+    }
+
+    .button-primary {
+      color: #041014;
+
+      background:
+        linear-gradient(
+          135deg,
+          #67e8f9,
+          #818cf8
+        );
+    }
+
+    .button-primary:hover {
+      transform: translateY(-2px);
+    }
+
+    .button-secondary {
+      border:
+        1px solid var(--border);
+
+      background:
+        rgba(255,255,255,.03);
+    }
+
+    .button-secondary:hover {
+      background:
+        rgba(255,255,255,.07);
+    }
+
+    /* --------------------
+       SECTIONS
+    --------------------- */
+
+    section {
+      padding: 100px 0;
+    }
+
+    .section-label {
+      color: var(--cyan);
+
+      font-size: 12px;
+
+      letter-spacing: 3px;
+
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-size: 42px;
+
+      letter-spacing: -1.5px;
+
+      margin-bottom: 14px;
+    }
+
+    .section-description {
+      color: var(--muted);
+
+      max-width: 620px;
+
+      margin-bottom: 48px;
+    }
+
+    /* --------------------
+       CARDS
+    --------------------- */
+
+    .grid {
+      display: grid;
+
+      grid-template-columns:
+        repeat(3, 1fr);
+
+      gap: 18px;
+    }
+
+    .card {
+      min-height: 310px;
+
+      padding: 30px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(255,255,255,.055),
+          rgba(255,255,255,.015)
+        );
+
+      border:
+        1px solid var(--border);
+
+      border-radius: 18px;
+
+      transition: .3s;
+
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+
+      border-color:
+        rgba(103,232,249,.25);
+
+      background:
+        var(--card-hover);
+    }
+
+    .card-number {
+      font-size: 13px;
+
+      color: var(--cyan);
+
+      margin-bottom: 70px;
+    }
+
+    .card h3 {
+      font-size: 26px;
+
+      margin-bottom: 12px;
+    }
+
+    .card p {
+      color: var(--muted);
+
+      font-size: 15px;
+    }
+
+    .card-link {
+      margin-top: auto;
+
+      padding-top: 28px;
+
+      color: var(--cyan);
+    }
+
+    /* --------------------
+       FEATURED
+    --------------------- */
+
+    .featured {
+      padding: 48px;
+
+      border-radius: 24px;
+
+      background:
+        linear-gradient(
+          135deg,
+          #101824,
+          #101426
+        );
+
+      border:
+        1px solid var(--border);
+
+      display: grid;
+
+      grid-template-columns:
+        1.2fr .8fr;
+
+      gap: 50px;
+
+      align-items: center;
+    }
+
+    .featured h2 {
+      font-size: 44px;
+
+      margin-bottom: 15px;
+    }
+
+    .featured p {
+      color: var(--muted);
+
+      margin-bottom: 28px;
+    }
+
+    .geometry {
+      height: 300px;
+
+      display: flex;
+
+      justify-content: center;
+      align-items: center;
+    }
+
+    .cube {
+      width: 130px;
+      height: 130px;
+
+      border:
+        2px solid var(--cyan);
+
+      transform:
+        rotateX(55deg)
+        rotateZ(45deg);
+
+      box-shadow:
+        0 0 80px
+        rgba(103,232,249,.16);
+
+      animation:
+        rotateCube 8s
+        linear
+        infinite;
+    }
+
+    @keyframes rotateCube {
+
+      from {
+        transform:
+          rotateX(55deg)
+          rotateZ(0deg);
+      }
+
+      to {
+        transform:
+          rotateX(55deg)
+          rotateZ(360deg);
+      }
+
+    }
+
+    /* --------------------
+       MANIFESTO
+    --------------------- */
+
+    .manifesto {
+      text-align: center;
+
+      max-width: 820px;
+
+      margin: auto;
+
+      padding: 80px 0;
+    }
+
+    .manifesto p {
+      font-size: clamp(
+        28px,
+        4vw,
+        48px
+      );
+
+      line-height: 1.35;
+
+      letter-spacing: -1px;
+    }
+
+    .manifesto span {
+      color: var(--cyan);
+    }
+
+    /* --------------------
+       FOOTER
+    --------------------- */
+
+    footer {
+      padding: 50px 0;
+
+      border-top:
+        1px solid var(--border);
+
+      color: var(--muted);
+
+      font-size: 14px;
+    }
+
+    .footer-inner {
+      display: flex;
+
+      justify-content: space-between;
+
+      gap: 20px;
+
+      flex-wrap: wrap;
+    }
+
+    /* --------------------
+       MOBILE
+    --------------------- */
+
+    @media(max-width:800px) {
+
+      .nav-links {
+        display: none;
+      }
+
+      .hero {
+        min-height: 600px;
+      }
+
+      h1 {
+        letter-spacing: -2px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .featured {
+        grid-template-columns: 1fr;
+
+        padding: 30px;
+      }
+
+      .geometry {
+        height: 220px;
+      }
+
+    }
+
+  </style>
 </head>
-<style>
-	body {
-		background-color: rgb(176, 216, 245);
-	}
-
-	#开头语句 {
-		background-color: aquamarine;
-	}
-
-	.重点话 {
-		background-color: bisque;
-	}
-
-	#主要讲述 {
-		background-color: aqua;
-	}
-</style>
 
 <body>
-	<h1 id="开头语句">这是Moocius的Blog</h1>
-	<p>大家好！我是Moocius<br>
-		<img src="1.jpg" alt="我在骑行" width="500"><br>
-		我会给大家讲解一下我的 <strong>经历</strong> 和 <strong>想法</strong><br>
-		希望能够给大家提供一些 <strong>帮助</strong> 和 <strong>支持</strong><br>
-	</p>
-	<ul>
-		<li class="重点话">
-			坚持 思考 是我们学数学信息的主要手段
-		</li>
-		<li class="重点话">
-			坚持了才叫梦想 放弃了只叫妄想
-		</li>
-	</ul>
-	<p id="主要讲述">未来的社会将分为两种东西：一个是 <strong>数学</strong> 另一个是 <strong>算法</strong><br>
-		接下来我会把这两样东西讲 <strong>明白</strong> 讲 <strong>清楚</strong> 让大家更好的 <strong>理解</strong><br>
-	</p>
-	<p>
-	<ul>
-		<li>
-			<a target="_blank" href="paixu.html">
-				<h3>排序算法</h3>
-			</a>
-		</li>
-		<li>
-			<a target="_blank" href="sousuo.html">
-				<h3>搜索算法</h3>
-			</a>
-		</li>
-		<li>
-			<a target="_blank" href="game.html">
-				<h3>游戏</h3>
-			</a>
-		</li>
-	</ul>
-	</p>
+
+<nav>
+
+  <div class="container nav-inner">
+
+    <a class="logo" href="#">
+      Moocius<span>.</span>
+    </a>
+
+    <div class="nav-links">
+
+      <a href="#math">
+        数学
+      </a>
+
+      <a href="#algorithm">
+        算法
+      </a>
+
+      <a href="#lab">
+        实验室
+      </a>
+
+      <a href="game.html">
+        游戏
+      </a>
+
+      <a href="#about">
+        关于
+      </a>
+
+    </div>
+
+  </div>
+
+</nav>
+
+
+<main>
+
+  <!-- HERO -->
+
+  <section class="hero">
+
+    <div class="container hero-inner">
+
+      <div class="eyebrow">
+        Mathematics × Algorithms × Visualization
+      </div>
+
+      <h1>
+        <span class="gradient-text">
+          数信之路
+        </span>
+      </h1>
+
+      <p class="hero-description">
+
+        理解公式，看见算法，
+        建立真正的数理直觉。
+
+        <br>
+
+        把数学讲清楚，
+        把算法做出来。
+
+      </p>
+
+      <div class="buttons">
+
+        <a
+          class="button button-primary"
+          href="#math"
+        >
+          探索数学
+        </a>
+
+        <a
+          class="button button-secondary"
+          href="#lab"
+        >
+          进入实验室 →
+        </a>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- THREE PILLARS -->
+
+  <section id="math">
+
+    <div class="container">
+
+      <div class="section-label">
+        EXPLORE
+      </div>
+
+      <h2 class="section-title">
+        从理解，到创造
+      </h2>
+
+      <p class="section-description">
+
+        数学不是公式的集合，
+        算法也不是代码的集合。
+
+        真正重要的是理解背后的结构、
+        规律与思想。
+
+      </p>
+
+
+      <div class="grid">
+
+        <a class="card" href="#">
+
+          <div class="card-number">
+            01 / MATHEMATICS
+          </div>
+
+          <h3>
+            数学
+          </h3>
+
+          <p>
+
+            代数、几何、函数、
+            数论与组合数学。
+
+            从问题出发，
+            建立数学模型。
+
+          </p>
+
+          <div class="card-link">
+            探索数学 →
+          </div>
+
+        </a>
+
+
+        <a
+          class="card"
+          id="algorithm"
+          href="paixu.html"
+        >
+
+          <div class="card-number">
+            02 / ALGORITHMS
+          </div>
+
+          <h3>
+            算法
+          </h3>
+
+          <p>
+
+            从排序、搜索开始，
+            理解算法如何思考问题，
+            以及复杂度背后的逻辑。
+
+          </p>
+
+          <div class="card-link">
+            学习算法 →
+          </div>
+
+        </a>
+
+
+        <a
+          class="card"
+          id="lab"
+          href="game.html"
+        >
+
+          <div class="card-number">
+            03 / LAB
+          </div>
+
+          <h3>
+            交互实验室
+          </h3>
+
+          <p>
+
+            不只阅读。
+
+            拖动、观察、实验，
+            让抽象概念真正动起来。
+
+          </p>
+
+          <div class="card-link">
+            进入实验室 →
+          </div>
+
+        </a>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- FEATURED PROJECT -->
+
+  <section>
+
+    <div class="container">
+
+      <div class="featured">
+
+        <div>
+
+          <div class="section-label">
+            FEATURED PROJECT
+          </div>
+
+          <h2>
+            3D Geometry
+            Explorer
+          </h2>
+
+          <p>
+
+            通过交互式三维环境，
+            探索基本几何形状和空间关系。
+
+            不只是记住几何结论，
+            而是建立真正的空间直觉。
+
+          </p>
+
+          <a
+            class="button button-primary"
+            href="game.html"
+          >
+            开始探索
+          </a>
+
+        </div>
+
+
+        <div class="geometry">
+
+          <div class="cube">
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- MANIFESTO -->
+
+  <section>
+
+    <div class="container">
+
+      <div class="manifesto">
+
+        <p>
+
+          我相信真正的学习不是
+
+          <span>
+            记住答案
+          </span>
+
+          ，
+
+          而是看见问题背后的
+
+          <span>
+            结构。
+          </span>
+
+        </p>
+
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <!-- ABOUT -->
+
+  <section id="about">
+
+    <div class="container">
+
+      <div class="section-label">
+        ABOUT
+      </div>
+
+      <h2 class="section-title">
+        About Moocius
+      </h2>
+
+      <p class="section-description">
+
+        这里记录我对数学、
+        算法和计算思维的探索。
+
+        希望通过文字、动画和交互实验，
+        把复杂的问题解释得更加直观。
+
+      </p>
+
+    </div>
+
+  </section>
+
+</main>
+
+
+<footer>
+
+  <div class="container footer-inner">
+
+    <div>
+      © 2026 Moocius
+    </div>
+
+    <div>
+      Mathematics · Algorithms · Visualization
+    </div>
+
+  </div>
+
+</footer>
+
+
 </body>
 
 </html>
